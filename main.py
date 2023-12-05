@@ -69,6 +69,18 @@ def plot(x_angle, y_angle):
     plt.show()
 
 
+def read_accelerometer(accelerometer, x_angle, y_angle):
+    prev_time = time.time()
+    while True:
+        (xaccel, yaccel, zaccel) = accelerometer.get_acceleration()
+        x_angle.value = math.atan2(zaccel, yaccel) * 360 / (2 * math.pi) + 90
+        y_angle.value = math.atan2(zaccel, xaccel) * 360 / (2 * math.pi) + 90
+
+        time.sleep(0.02)
+        print(time.time() - prev_time)
+        prev_time = time.time()
+
+
 def main():
     argument_parser = argparse.ArgumentParser()
     argument_parser.add_argument("--dummy-data", action="store_true")
@@ -90,8 +102,8 @@ def main():
     motor_y = Motor(PIN_DIR_Y, PIN_STEP_Y)
     accelerometer = Accelerometer()
 
-    x_angle = Value("i", 0)
-    y_angle = Value("i", 0)
+    x_angle = Value("d", 0)
+    y_angle = Value("d", 0)
 
     process_update_motor_x = Process(target=update_motor, args=(x_angle, motor_x))
     process_update_motor_y = Process(target=update_motor, args=(y_angle, motor_y))
@@ -101,18 +113,10 @@ def main():
     process_plot = Process(target=plot, args=(x_angle, y_angle))
     process_plot.start()
 
-    prev_time = time.time()
-    while True:
-        (xaccel, yaccel, zaccel) = accelerometer.get_acceleration()
-
-        alpha = math.atan2(zaccel, yaccel) * 360 / (2 * math.pi) + 90
-        beta = math.atan2(zaccel, xaccel) * 360 / (2 * math.pi) + 90
-        x_angle.value = int(alpha)
-        y_angle.value = int(beta)
-
-        time.sleep(0.02)
-        print(time.time() - prev_time)
-        prev_time = time.time()
+    process_read_accelerometer = Process(
+        target=read_accelerometer, args=(accelerometer, x_angle, y_angle)
+    )
+    process_read_accelerometer.start()
 
 
 if __name__ == "__main__":
