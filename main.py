@@ -1,39 +1,47 @@
+# pylint: disable=missing-module-docstring
+# pylint: disable=missing-function-docstring
+
 import argparse
-import time
 import math
+from multiprocessing import Process, Value
+import time
+
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-from time import sleep
-from multiprocessing import Process, Value
+
+PIN_DIR_X = 19
+PIN_STEP_X = 26
+PIN_DIR_Y = 21
+PIN_STEP_Y = 20
 
 
-def step(angle, directionPin, stepPin):
+def step(angle, direction_pin, step_pin):
     direction = 0
 
     while True:
         direction = int(angle.value / 2.0)
         if direction > 0:
-            GPIO.output(directionPin, GPIO.HIGH)
+            GPIO.output(direction_pin, GPIO.HIGH)
         else:
-            GPIO.output(directionPin, GPIO.LOW)
+            GPIO.output(direction_pin, GPIO.LOW)
 
         if abs(direction) >= 1:
-            sleepTime = 0.02 / abs(direction) / 2
+            sleep_time = 0.02 / abs(direction) / 2
             for i in range(0, abs(direction) * 2):
-                GPIO.output(stepPin, i % 2)
-                sleep(sleepTime)
+                GPIO.output(step_pin, i % 2)
+                time.sleep(sleep_time)
 
 
-def anim(xAngle, yAngle):
+def anim(x_angle, y_angle):
     fig, axs = plt.subplots(1, 2, figsize=(12, 6))
     fig.suptitle('Gimbal')
     xs = []
     ys = []
     t = []
 
-    def animate(i, xs, ys, t, xAngle, yAngle):
-        xs.append(xAngle.value)
-        ys.append(yAngle.value)
+    def animate(_, xs, ys, t, x_angle, y_angle):
+        xs.append(x_angle.value)
+        ys.append(y_angle.value)
         t.append(time.time())
         # Limit x and y lists to 20 items
         xs = xs[-20:]
@@ -53,8 +61,8 @@ def anim(xAngle, yAngle):
         fig[1].plot(t, ys)
         plt.ion()
         return plt.plot()
-    aaa = animation.FuncAnimation(fig, animate, fargs=(
-        xs, ys, t, xAngle, yAngle), interval=500, cache_frame_data=False)
+    _ = animation.FuncAnimation(fig, animate, fargs=(
+        xs, ys, t, x_angle, y_angle), interval=500, cache_frame_data=False)
     plt.show()
 
 
@@ -64,10 +72,12 @@ def main():
     dummy_data = argument_parser.parse_args().dummy_data
 
     if not dummy_data:
+        # pylint: disable=import-error
+        # pylint: disable=import-outside-toplevel
         import adafruit_adxl34x
         import board
         import busio
-        import RPi.GPIO as GPIO
+        from RPi import GPIO
 
         GPIO.setmode(GPIO.BCM)
 
@@ -79,32 +89,24 @@ def main():
         i2c = busio.I2C(board.SCL, board.SDA)
         accelerometer = adafruit_adxl34x.ADXL345(i2c)
 
-    dirX = 19
-    stepX = 26
-
-    dirY = 21
-    stepY = 20
-
     # klasa ogarniajaca silniki krokowe
 
-    xAngle = Value("i", 0)
-    yAngle = Value("i", 0)
-    xPrevious = Value("i", 0)
-    yPrevious = Value("i", 0)
+    x_angle = Value("i", 0)
+    y_angle = Value("i", 0)
 
     if not dummy_data:
-        x = Process(target=step, args=(xAngle, dirX, stepX))
-        y = Process(target=step, args=(yAngle, dirY, stepY))
+        x = Process(target=step, args=(x_angle, PIN_DIR_X, PIN_STEP_X))
+        y = Process(target=step, args=(y_angle, PIN_DIR_Y, PIN_STEP_Y))
         x.start()
         y.start()
 
-    a = Process(target=anim, args=(xAngle, yAngle))
+    a = Process(target=anim, args=(x_angle, y_angle))
     a.start()
 
-    alphaHist = []
-    betaHist = []
+    alpha_hist = []
+    beta_hist = []
 
-    prevTime = time.time()
+    prev_time = time.time()
     while True:
         if dummy_data:
             xaccel = math.sin(time.time())
@@ -117,15 +119,15 @@ def main():
 
         alpha = math.atan2(zaccel, yaccel) * 360 / (2 * math.pi) + 90
         beta = math.atan2(zaccel, xaccel) * 360 / (2 * math.pi) + 90
-        xAngle.value = int(alpha)
-        yAngle.value = int(beta)
+        x_angle.value = int(alpha)
+        y_angle.value = int(beta)
 
         time.sleep(0.02)
-        # print(time.time() - prevTime)
-        prevTime = time.time()
+        print(time.time() - prev_time)
+        prev_time = time.time()
 
-        alphaHist.append(alpha)
-        betaHist.append(beta)
+        alpha_hist.append(alpha)
+        beta_hist.append(beta)
 
 
 if __name__ == '__main__':
