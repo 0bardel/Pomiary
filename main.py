@@ -48,13 +48,13 @@ def plot(x_angle, y_angle):
 
         axs[0].clear()
         axs[1].set_title("Położenie w czasie")
-        axs[0].set_xlim(-360, 360)
-        axs[0].set_ylim(-360, 360)
+        axs[0].set_xlim(0, 360)
+        axs[0].set_ylim(0, 360)
         axs[0].scatter(xs[-XY_PLOT_MAX_POINTS:], ys[-XY_PLOT_MAX_POINTS:])
 
         axs[1].clear()
         axs[1].set_title("Zależność kąta od czasu")
-        axs[1].set_ylim(-360, 360)
+        axs[1].set_ylim(0, 360)
         axs[1].plot(
             t[-ANGLE_TIME_PLOT_MAX_POINTS:],
             xs[-ANGLE_TIME_PLOT_MAX_POINTS:],
@@ -82,8 +82,8 @@ def plot(x_angle, y_angle):
 def read_accelerometer(accelerometer, x_angle, y_angle):
     while True:
         (xaccel, yaccel, zaccel) = accelerometer.get_acceleration()
-        x_angle.value = math.atan2(zaccel, yaccel) * 360 / (2 * math.pi) + 90
-        y_angle.value = math.atan2(zaccel, xaccel) * 360 / (2 * math.pi) + 90
+        x_angle.value = (math.atan2(zaccel, yaccel) * 360 / (2 * math.pi) + 90) % 360
+        y_angle.value = (math.atan2(zaccel, xaccel) * 360 / (2 * math.pi) + 90) % 360
         time.sleep(0.02)
 
 
