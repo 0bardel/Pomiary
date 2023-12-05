@@ -33,72 +33,84 @@ accelerometer = adafruit_adxl34x.ADXL345(i2c)
 
 def step(angle, directionPin, stepPin):
     direction = 0
-    while(True):
-
-        direction = int(angle.value / 2.)
-        if(direction > 0):
-            GPIO.output(directionPin,GPIO.HIGH)
+    
+    while True:
+        direction = int(angle.value / 2.0)
+        if direction > 0:
+            GPIO.output(directionPin, GPIO.HIGH)
         else:
-            GPIO.output(directionPin,GPIO.LOW)
+            GPIO.output(directionPin, GPIO.LOW)
 
         if abs(direction) >= 1:
             sleepTime = 0.02 / abs(direction) / 2
-            for i in range(0,abs(direction)*2):
-                GPIO.output(stepPin, i%2)
+            for i in range(0, abs(direction) * 2):
+                GPIO.output(stepPin, i % 2)
                 sleep(sleepTime)
-            
-# xCommandQueue = queue.Queue()
-# xCommandQueue.put(3)
-xAngle = Value('i', 0)
-yAngle = Value('i', 0)
+
+xAngle = Value("i", 0)
+yAngle = Value("i", 0)
+xPrevious = Value("i", 0)
+yPrevious = Value("i", 0)
 x = Process(target=step, args=(xAngle, dirX, stepX))
 y = Process(target=step, args=(yAngle, dirY, stepY))
 x.start()
 y.start()
 
-# fig = plt.figure()
-# ax = fig.add_subplot(1, 1, 1)
-# xs = []
-# ys = []
+def anim(xAngle, yAngle):
+    
+    fig, axs = plt.subplots(1, 2,figsize=(12,6))
+    fig.suptitle('Gimbal')
+    xs = []
+    ys = []
+    t = []
+    def animate(i, xs, ys,t, xAngle, yAngle):
+        xs.append(xAngle.value)
+        ys.append(yAngle.value)
+        t.append(time.time())
+        # Limit x and y lists to 20 items
+        xs = xs[-20:]
+        ys = ys[-20:]
+        t = t[-20:]
+        # Draw x and y lists
+        axs[0].scatter(xs, ys)
 
-# def animate(i, xs, ys):
-#     # Read temperature (Celsius) from TMP102
-#     temp_c = round(tmp102.read_temp(), 2)
+        # Format plot
+        plt.setp(axs[0],xlim = (-25,25))
+        fig[0].ylim(-25,25)
+        plt.title('Angle over time')
+        plt.xlabel("Kąt X")
+        plt.ylabel("Kąt Y")
 
-#     # Add x and y to lists
-#     xs.append(dt.datetime.now().strftime('%H:%M:%S.%f'))
-#     ys.append(i % 3)
+        fig[1].plot(t, xs)
+        fig[1].plot(t, ys)
+        plt.ion()
+        return plt.plot()
+    aaa = animation.FuncAnimation(fig, animate, fargs=(xs, ys,t, xAngle, yAngle), interval=500, cache_frame_data=False)
+    plt.show()
 
-#     # Limit x and y lists to 20 items
-#     xs = xs[-20:]
-#     ys = ys[-20:]
+a = Process(target=anim, args=(xAngle, yAngle))
+a.start()
 
-#     # Draw x and y lists
-#     ax.clear()
-#     ax.plot(xs, ys)
 
-#     # Format plot
-#     plt.xticks(rotation=45, ha='right')
-#     plt.subplots_adjust(bottom=0.30)
-#     plt.title('TMP102 Temperature over Time')
-#     plt.ylabel('Temperature (deg C)')
 
-# ani = animation.FuncAnimation(fig, animate, fargs=(xs, ys), interval=1000)
-# plt.show()
+alphaHist=[]
+betaHist=[]
 
 prevTime = time.time()
 while True:
-    
     xaccel = accelerometer.acceleration[0]
     yaccel = accelerometer.acceleration[1]
     zaccel = accelerometer.acceleration[2]
-    
-    alpha = (math.atan2(zaccel, yaccel)*360/(2*math.pi) + 90)
-    beta = (math.atan2(zaccel, xaccel)*360/(2*math.pi) + 90)
+
+    alpha = math.atan2(zaccel, yaccel) * 360 / (2 * math.pi) + 90
+    beta = math.atan2(zaccel, xaccel) * 360 / (2 * math.pi) + 90
     xAngle.value = int(alpha)
     yAngle.value = int(beta)
 
     time.sleep(0.02)
-    #print(time.time() - prevTime)
+    print(time.time() - prevTime)
     prevTime = time.time()
 
+
+    alphaHist.append(alpha)
+    betaHist.append(beta)
