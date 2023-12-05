@@ -14,6 +14,9 @@ PIN_STEP_X = 26
 PIN_DIR_Y = 21
 PIN_STEP_Y = 20
 
+XY_PLOT_MAX_POINTS = 20
+ANGLE_TIME_PLOT_MAX_POINTS = 20
+
 
 def update_motor(angle, motor):
     direction = 0
@@ -36,49 +39,52 @@ def plot(x_angle, y_angle):
     ys = []
     t = []
 
-    def animate(_, xs, ys, t, x_angle, y_angle):
+    start_time = time.time()
+
+    def update(_, xs, ys, t, x_angle, y_angle):
         xs.append(x_angle.value)
         ys.append(y_angle.value)
-        t.append(time.time())
-        # Limit x and y lists to 20 items
-        xs = xs[-20:]
-        ys = ys[-20:]
-        t = t[-20:]
-        # Draw x and y lists
-        axs[0].scatter(xs, ys)
+        t.append(time.time() - start_time)
 
-        # Format plot
-        plt.setp(axs[0], xlim=(-25, 25))
-        fig[0].ylim(-25, 25)
-        plt.title("Angle over time")
-        plt.xlabel("Kąt X")
-        plt.ylabel("Kąt Y")
+        axs[0].clear()
+        axs[1].set_title("Położenie w czasie")
+        axs[0].set_xlim(-360, 360)
+        axs[0].set_ylim(-360, 360)
+        axs[0].scatter(xs[-XY_PLOT_MAX_POINTS:], ys[-XY_PLOT_MAX_POINTS:])
 
-        fig[1].plot(t, xs)
-        fig[1].plot(t, ys)
-        plt.ion()
-        return plt.plot()
+        axs[1].clear()
+        axs[1].set_title("Zależność kąta od czasu")
+        axs[1].set_ylim(-360, 360)
+        axs[1].plot(
+            t[-ANGLE_TIME_PLOT_MAX_POINTS:],
+            xs[-ANGLE_TIME_PLOT_MAX_POINTS:],
+            label="Kąt X",
+        )
+        axs[1].plot(
+            t[-ANGLE_TIME_PLOT_MAX_POINTS:],
+            ys[-ANGLE_TIME_PLOT_MAX_POINTS:],
+            label="Kąt Y",
+        )
+        axs[1].legend(loc="upper right")
+
+        return axs
 
     _ = animation.FuncAnimation(
         fig,
-        animate,
+        update,
         fargs=(xs, ys, t, x_angle, y_angle),
-        interval=500,
+        interval=100,
         cache_frame_data=False,
     )
     plt.show()
 
 
 def read_accelerometer(accelerometer, x_angle, y_angle):
-    prev_time = time.time()
     while True:
         (xaccel, yaccel, zaccel) = accelerometer.get_acceleration()
         x_angle.value = math.atan2(zaccel, yaccel) * 360 / (2 * math.pi) + 90
         y_angle.value = math.atan2(zaccel, xaccel) * 360 / (2 * math.pi) + 90
-
         time.sleep(0.02)
-        print(time.time() - prev_time)
-        prev_time = time.time()
 
 
 def main():
