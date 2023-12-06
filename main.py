@@ -4,6 +4,7 @@
 import argparse
 import math
 from multiprocessing import Process, Value
+import sys
 import time
 
 import matplotlib.pyplot as plt
@@ -116,13 +117,33 @@ def main():
     process_update_motor_x.start()
     process_update_motor_y.start()
 
-    process_plot = Process(target=plot, args=(x_angle, y_angle))
-    process_plot.start()
-
     process_read_accelerometer = Process(
         target=read_accelerometer, args=(accelerometer, x_angle, y_angle)
     )
     process_read_accelerometer.start()
+
+    def exit_program():
+        process_update_motor_x.kill()
+        process_update_motor_y.kill()
+        process_read_accelerometer.kill()
+        sys.exit()
+
+    interface_choices = {
+        "w": (
+            lambda: Process(target=plot, args=(x_angle, y_angle)).start(),
+            "Pokaż wykres",
+        ),
+        "p": (lambda: print("Niezaimplementowane."), "Zapisz dane do pliku"),
+        "x": (exit_program, "Wyjdź"),
+    }
+    while True:
+        print(
+            'Wybierz operację, wpisując odpowiedni znak i następnie wciskając "enter".'
+        )
+        for character, (_, description) in interface_choices.items():
+            print(f" {character} - {description}")
+        user_input = input()
+        interface_choices[user_input][0]()
 
 
 if __name__ == "__main__":
